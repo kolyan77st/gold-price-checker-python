@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import os
 import smtplib
 from email.mime.text import MIMEText
+import time
 
 app = Flask(__name__)
 
@@ -31,16 +32,25 @@ def check_gold():
         if not SCRAPER_API_KEY:
             return Response("SCRAPER_API_KEY не задан", status=500)
 
-        # Scraper API с рендером JS
-        scraper_url = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={URL}&render=true"
-        r = requests.get(scraper_url, timeout=15)
-        r.raise_for_status()
+        scraper_url = f"https://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={URL}&render=true"
+
+        # retry 3 раза
+        for attempt in range(3):
+            try:
+                r = requests.get(scraper_url, timeout=60)
+                r.raise_for_status()
+                break
+            except requests.exceptions.RequestException:
+                if attempt < 2:
+                    time.sleep(5)
+                else:
+                    return Response("Scraper API не отвечает после 3 попыток", status=500)
+
         soup = BeautifulSoup(r.text, "html.parser")
 
-        # Пробуем найти цены по актуальному HTML
         price_585 = price_750 = price_999 = "Нет данных"
 
-        # ищем элементы с классом или атрибутом, где реально отображаются цены
+        # простой поиск по тексту (можно уточнить селекторы)
         for div in soup.find_all("div"):
             text = div.get_text(strip=True)
             if "585" in text:
@@ -57,9 +67,7 @@ def check_gold():
             f"999 проба: {price_999}\n"
         )
 
-        # Отправка email
         send_email(result)
-
         return Response(result, status=200, mimetype="text/plain")
 
     except Exception as e:
