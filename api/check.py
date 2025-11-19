@@ -9,8 +9,8 @@ def send_email(text):
     EMAIL_PASS = os.environ["EMAIL_PASS"]
 
     recipients = [
-        "KZJ78@yandex.ru",
-        "alex77st@mail.ru",
+        "KZJ78@yandex.kz",
+        "alex77st@mail.ru"
     ]
 
     msg = MIMEText(text, "plain", "utf-8")
@@ -31,15 +31,14 @@ def handler(request):
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
 
-        # Находим все img с alt, содержащим "Проба"
         imgs = soup.find_all("img", alt=lambda x: x and "Проба" in x)
 
         price_585 = price_750 = price_999 = "Нет данных"
 
         for img in imgs:
-            alt = img['alt']
+            alt = img.get('alt', '')
             if "585" in alt:
-                price_585 = alt.split()[-1]  # цена в конце alt
+                price_585 = alt.split()[-1]
             elif "750" in alt:
                 price_750 = alt.split()[-1]
             elif "999" in alt:
@@ -52,7 +51,8 @@ def handler(request):
             f"999 проба: {price_999}\n"
         )
 
-        send_email(text)
+        # Временно отключим отправку email для теста
+        # send_email(text)
 
         return {"status": 200, "body": text}
 
