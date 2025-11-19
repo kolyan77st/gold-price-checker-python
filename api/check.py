@@ -10,12 +10,12 @@ app = Flask(__name__)
 
 # --- Настройки из Environment Variables ---
 SCRAPER_API_KEY = os.environ.get("SCRAPER_API_KEY")
-EMAIL_USER = os.environ.get("EMAIL_USER")  # полный email Yandex, например example@yandex.ru
-EMAIL_PASS = os.environ.get("EMAIL_PASS")  # App Password Yandex
+EMAIL_USER = os.environ.get("EMAIL_USER")  # Gmail, например kolyan77st@gmail.com
+EMAIL_PASS = os.environ.get("EMAIL_PASS")  # App Password Gmail
 URL = "https://m-lombard.kz/"
 
 # --- Список адресатов ---
-RECIPIENTS = ["kolyan77st@gmail.com", "alex77st@mail.ru"]
+RECIPIENTS = ["KZJ78@yandex.kz", "alex77st@mail.ru"]
 
 # --- Функция отправки письма ---
 def send_email(text):
@@ -25,7 +25,7 @@ def send_email(text):
     msg["To"] = ", ".join(RECIPIENTS)
 
     try:
-        server = smtplib.SMTP("smtp.yandex.ru", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(EMAIL_USER, EMAIL_PASS)
         server.sendmail(EMAIL_USER, RECIPIENTS, msg.as_string())
