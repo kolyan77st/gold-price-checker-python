@@ -20,11 +20,18 @@ def send_email(text):
     msg["From"] = EMAIL_USER
     msg["To"] = ", ".join(recipients)
 
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login(EMAIL_USER, EMAIL_PASS)
-    server.sendmail(EMAIL_USER, recipients, msg.as_string())
-    server.quit()
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASS)
+        server.sendmail(EMAIL_USER, recipients, msg.as_string())
+        print("Email успешно отправлен на:", recipients)
+    except Exception as e:
+        # Логируем ошибку для Vercel
+        print("Ошибка при отправке email:", e)
+        raise
+    finally:
+        server.quit()
 
 @app.route("/api/check")
 def check_gold():
@@ -34,22 +41,21 @@ def check_gold():
 
         scraper_url = f"https://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={URL}&render=true"
 
-        # retry 3 раза
         for attempt in range(3):
             try:
                 r = requests.get(scraper_url, timeout=60)
                 r.raise_for_status()
                 break
-            except requests.exceptions.RequestException:
+            except requests.exceptions.RequestException as e:
+                print(f"Попытка {attempt+1} не удалась: {e}")
                 if attempt < 2:
                     time.sleep(5)
                 else:
                     return Response("Scraper API не отвечает после 3 попыток", status=500)
 
         soup = BeautifulSoup(r.text, "html.parser")
-
-        # Парсим цены по реальному селектору
         blocks = soup.select('div.big.fst-normal')
+
         price_585 = blocks[0].get_text(strip=True) if len(blocks) > 0 else "Нет данных"
         price_750 = blocks[1].get_text(strip=True) if len(blocks) > 1 else "Нет данных"
         price_999 = blocks[2].get_text(strip=True) if len(blocks) > 2 else "Нет данных"
@@ -61,7 +67,12 @@ def check_gold():
             f"999 проба: {price_999}\n"
         )
 
-        send_email(result)
+        try:
+            send_email(result)
+        except Exception as e:
+            # Возвращаем ошибку, чтобы Vercel показал её в логах
+            return Response(f"Ошибка отправки email: {e}", status=500, mimetype="text/plain")
+
         return Response(result, status=200, mimetype="text/plain")
 
     except Exception as e:
