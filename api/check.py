@@ -14,7 +14,7 @@ EMAIL_PASS = os.environ.get("EMAIL_PASS")
 URL = "https://m-lombard.kz/"
 
 def send_email(text):
-    recipients = ["KZJ78@yandex.kz", "alex77st@mail.ru"]
+    recipients = ["kolyan77st@gmail.com", "alex77st@mail.ru"]
     msg = MIMEText(text, "plain", "utf-8")
     msg["Subject"] = "Цены на золото (585, 750, 999)"
     msg["From"] = EMAIL_USER
