@@ -1,28 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-import smtplib
-from email.mime.text import MIMEText
-import os
-
-def send_email(text):
-    EMAIL_USER = os.environ["EMAIL_USER"]
-    EMAIL_PASS = os.environ["EMAIL_PASS"]
-
-    recipients = [
-        "KZJ78@yandex.kz",
-        "alex77st@mail.ru"
-    ]
-
-    msg = MIMEText(text, "plain", "utf-8")
-    msg["Subject"] = "Цены на золото (585, 750, 999)"
-    msg["From"] = EMAIL_USER
-    msg["To"] = ", ".join(recipients)
-
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login(EMAIL_USER, EMAIL_PASS)
-    server.sendmail(EMAIL_USER, recipients, msg.as_string())
-    server.quit()
 
 def handler(request):
     try:
@@ -44,16 +21,7 @@ def handler(request):
             elif "999" in alt:
                 price_999 = alt.split()[-1]
 
-        text = (
-            "Текущие цены на золото:\n"
-            f"585 проба: {price_585}\n"
-            f"750 проба: {price_750}\n"
-            f"999 проба: {price_999}\n"
-        )
-
-        # Временно отключим отправку email для теста
-        # send_email(text)
-
+        text = f"585: {price_585}, 750: {price_750}, 999: {price_999}"
         return {"status": 200, "body": text}
 
     except Exception as e:
