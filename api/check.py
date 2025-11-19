@@ -21,26 +21,26 @@ def send_email(text):
     msg["To"] = ", ".join(recipients)
 
     try:
-        # Используем SMTP_SSL и порт 465 (часто надежнее для Gmail)
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        # Yandex SMTP
+        server = smtplib.SMTP("smtp.yandex.ru", 587)
+        server.starttls()
         server.login(EMAIL_USER, EMAIL_PASS)
         server.sendmail(EMAIL_USER, recipients, msg.as_string())
-        server.quit()
-        return True, "Письмо отправлено"
+        print("Email успешно отправлен на:", recipients)
     except Exception as e:
-        print(f"Ошибка SMTP: {e}") # Смотрите логи сервера
-        return False, str(e)
+        print("Ошибка при отправке email:", e)
+        raise
+    finally:
+        server.quit()
 
 @app.route("/api/check")
 def check_gold():
     try:
-        if not SCRAPER_API_KEY or not EMAIL_USER or not EMAIL_PASS:
-            return Response("Не заданы API ключи или почта", status=500)
+        if not SCRAPER_API_KEY:
+            return Response("SCRAPER_API_KEY не задан", status=500)
 
         scraper_url = f"https://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={URL}&render=true"
 
-        # --- Логика парсинга ---
-        r = None
         for attempt in range(3):
             try:
                 r = requests.get(scraper_url, timeout=60)
@@ -51,14 +51,10 @@ def check_gold():
                 if attempt < 2:
                     time.sleep(5)
                 else:
-                    return Response(f"Scraper API ошибка: {str(e)}", status=500)
+                    return Response("Scraper API не отвечает после 3 попыток", status=500)
 
         soup = BeautifulSoup(r.text, "html.parser")
         blocks = soup.select('div.big.fst-normal')
-
-        # Проверка, что верстка спарсилась
-        if not blocks:
-             return Response("Не найдены элементы цен на странице (изменилась верстка?)", status=500)
 
         price_585 = blocks[0].get_text(strip=True) if len(blocks) > 0 else "Нет данных"
         price_750 = blocks[1].get_text(strip=True) if len(blocks) > 1 else "Нет данных"
@@ -70,14 +66,13 @@ def check_gold():
             f"750 проба: {price_750}\n"
             f"999 проба: {price_999}\n"
         )
-        
-        # --- Попытка отправки ---
-        success, msg = send_email(result)
-        
-        if success:
-            return Response(f"Успех! {result}", status=200, mimetype="text/plain")
-        else:
-            return Response(f"Данные получены, но ошибка отправки почты: {msg}\n\n{result}", status=500, mimetype="text/plain")
+
+        try:
+            send_email(result)
+        except Exception as e:
+            return Response(f"Ошибка отправки email: {e}", status=500, mimetype="text/plain")
+
+        return Response(result, status=200, mimetype="text/plain")
 
     except Exception as e:
-        return Response(f"Общая ошибка скрипта: {str(e)}", status=500, mimetype="text/plain")
+        return Response(f"Ошибка: {str(e)}", status=500, mimetype="text/plain")
