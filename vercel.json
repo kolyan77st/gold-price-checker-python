@@ -7,9 +7,6 @@
     }
   ],
   "routes": [
-    {
-      "src": "/api/check",
-      "dest": "api/check.py"
-    }
+    { "src": "/api/check", "dest": "api/check.py" }
   ]
 }
