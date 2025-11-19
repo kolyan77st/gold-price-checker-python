@@ -48,17 +48,11 @@ def check_gold():
 
         soup = BeautifulSoup(r.text, "html.parser")
 
-        price_585 = price_750 = price_999 = "Нет данных"
-
-        # простой поиск по тексту (можно уточнить селекторы)
-        for div in soup.find_all("div"):
-            text = div.get_text(strip=True)
-            if "585" in text:
-                price_585 = text.split()[-1]
-            elif "750" in text:
-                price_750 = text.split()[-1]
-            elif "999" in text:
-                price_999 = text.split()[-1]
+        # Парсим цены по реальному селектору
+        blocks = soup.select('div.big.fst-normal')
+        price_585 = blocks[0].get_text(strip=True) if len(blocks) > 0 else "Нет данных"
+        price_750 = blocks[1].get_text(strip=True) if len(blocks) > 1 else "Нет данных"
+        price_999 = blocks[2].get_text(strip=True) if len(blocks) > 2 else "Нет данных"
 
         result = (
             f"Текущие цены на золото:\n"
