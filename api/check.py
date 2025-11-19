@@ -25,7 +25,8 @@ def send_email(text):
     msg["To"] = ", ".join(RECIPIENTS)
 
     try:
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
         server.login(EMAIL_USER, EMAIL_PASS)
         server.sendmail(EMAIL_USER, RECIPIENTS, msg.as_string())
         print("Email успешно отправлен на:", RECIPIENTS)
