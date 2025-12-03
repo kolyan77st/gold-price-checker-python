@@ -47,15 +47,15 @@ def get_prices():
         r.raise_for_status()
         data = r.json()
 
-        # Ждём формат:
-        # [{"id":1,"purity":"585","price":"19900"}, ...]
-        prices = {item["purity"]: item["price"] for item in data}
+        # Формируем словарь вида: {"585": 37470, "750": 48038, "999": 64045}
+        prices = {item["code"]: item["price"] for item in data}
 
         return prices
 
     except Exception as e:
         print("Ошибка API M-Lombard:", e)
         raise
+
 
 
 # ==================================================================
@@ -67,11 +67,12 @@ def check_gold():
         prices = get_prices()
 
         result = (
-            "Текущие цены на золото:\n"
-            f"585 проба: {prices.get('585', 'нет данных')}\n"
-            f"750 проба: {prices.get('750', 'нет данных')}\n"
-            f"999 проба: {prices.get('999', 'нет данных')}\n"
-        )
+    "Текущие цены на золото:\n"
+    f"585 проба: {prices.get('585', 'нет данных')} тг\n"
+    f"750 проба: {prices.get('750', 'нет данных')} тг\n"
+    f"999 проба: {prices.get('999', 'нет данных')} тг\n"
+)
+
 
         # Если указан ?test=1 — письмо не отправляем
         if request.args.get("test") == "1":
