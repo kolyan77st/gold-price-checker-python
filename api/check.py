@@ -1,83 +1,87 @@
-from flask import Flask, Response
+from flask import Flask, Response, request
 import requests
-from bs4 import BeautifulSoup
 import os
 import smtplib
 from email.mime.text import MIMEText
-import time
 
 app = Flask(__name__)
 
-# --- Настройки из Environment Variables ---
-SCRAPER_API_KEY = os.environ.get("SCRAPER_API_KEY")
-EMAIL_USER = os.environ.get("EMAIL_USER")  # Gmail, например kolyan77st@gmail.com
-EMAIL_PASS = os.environ.get("EMAIL_PASS")  # App Password Gmail
-URL = "https://m-lombard.kz/"
+# --- Настройки ---
+EMAIL_USER = os.environ.get("EMAIL_USER")
+EMAIL_PASS = os.environ.get("EMAIL_PASS")
+SECRET_TOKEN = os.environ.get("SECRET_TOKEN", "12345")
 
-# --- Список адресатов ---
+# --- API M-Lombard ---
+API_URL = "https://m-lombard.kz/ru/api/admin/purities/?format=json"
+
+# --- Кому отправлять ---
 RECIPIENTS = ["KZJ78@yandex.kz", "alex77st@mail.ru"]
 
-# --- Функция отправки письма ---
+
+# ==================================================================
+#  EMAIL
+# ==================================================================
 def send_email(text):
     msg = MIMEText(text, "plain", "utf-8")
-    msg["Subject"] = "Цены на золото (585, 750, 999)"
+    msg["Subject"] = "Цены на золото (585 / 750 / 999)"
     msg["From"] = EMAIL_USER
     msg["To"] = ", ".join(RECIPIENTS)
 
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASS)
-        server.sendmail(EMAIL_USER, RECIPIENTS, msg.as_string())
-        print("Email успешно отправлен на:", RECIPIENTS)
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(EMAIL_USER, EMAIL_PASS)
+            server.sendmail(EMAIL_USER, RECIPIENTS, msg.as_string())
+        print("Email отправлен")
     except Exception as e:
-        print("Ошибка при отправке email:", e)
+        print("Ошибка отправки email:", e)
         raise
-    finally:
-        server.quit()
 
-# --- Основная функция ---
+
+# ==================================================================
+#  Получение JSON из API M-Lombard
+# ==================================================================
+def get_prices():
+    try:
+        r = requests.get(API_URL, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+
+        # Ждём формат:
+        # [{"id":1,"purity":"585","price":"19900"}, ...]
+        prices = {item["purity"]: item["price"] for item in data}
+
+        return prices
+
+    except Exception as e:
+        print("Ошибка API M-Lombard:", e)
+        raise
+
+
+# ==================================================================
+#  Эндпоинт
+# ==================================================================
 @app.route("/api/check")
 def check_gold():
+    token = request.args.get("token", "")
+    if token != SECRET_TOKEN:
+        return Response("Unauthorized", status=403)
+
     try:
-        if not SCRAPER_API_KEY:
-            return Response("SCRAPER_API_KEY не задан", status=500)
-
-        scraper_url = f"https://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={URL}&render=true"
-
-        # --- Попытки получения страницы через Scraper API ---
-        for attempt in range(3):
-            try:
-                r = requests.get(scraper_url, timeout=60)
-                r.raise_for_status()
-                break
-            except requests.exceptions.RequestException as e:
-                print(f"Попытка {attempt+1} не удалась: {e}")
-                if attempt < 2:
-                    time.sleep(5)
-                else:
-                    return Response("Scraper API не отвечает после 3 попыток", status=500)
-
-        soup = BeautifulSoup(r.text, "html.parser")
-        blocks = soup.select('div.big.fst-normal')
-
-        price_585 = blocks[0].get_text(strip=True) if len(blocks) > 0 else "Нет данных"
-        price_750 = blocks[1].get_text(strip=True) if len(blocks) > 1 else "Нет данных"
-        price_999 = blocks[2].get_text(strip=True) if len(blocks) > 2 else "Нет данных"
+        prices = get_prices()
 
         result = (
-            f"Текущие цены на золото:\n"
-            f"585 проба: {price_585}\n"
-            f"750 проба: {price_750}\n"
-            f"999 проба: {price_999}\n"
+            "Текущие цены на золото:\n"
+            f"585 проба: {prices.get('585', 'нет данных')}\n"
+            f"750 проба: {prices.get('750', 'нет данных')}\n"
+            f"999 проба: {prices.get('999', 'нет данных')}\n"
         )
 
-        # --- Отправка письма ---
-        try:
-            send_email(result)
-        except Exception as e:
-            return Response(f"Ошибка отправки email: {e}", status=500, mimetype="text/plain")
+        # Если указан ?test=1 — письмо не отправляем
+        if request.args.get("test") == "1":
+            return Response(result, status=200, mimetype="text/plain")
 
+        send_email(result)
         return Response(result, status=200, mimetype="text/plain")
 
     except Exception as e:
