@@ -63,7 +63,15 @@ def get_gold_prices():
 # ==================================================================
 def get_usd_rate_kurs():
     try:
-        r = requests.get(KURS_KZ_URL, timeout=10)
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            )
+        }
+
+        r = requests.get(KURS_KZ_URL, headers=headers, timeout=10)
         r.raise_for_status()
 
         soup = BeautifulSoup(r.text, "html.parser")
@@ -74,13 +82,10 @@ def get_usd_rate_kurs():
             cells = row.find_all("td")
             if len(cells) >= 3:
 
-                # Берём текст первого столбца (где картинка + "USD")
+                # текст первой колонки
                 raw = cells[0].get_text(separator=" ", strip=True)
-
-                # Нормализуем
                 clean = raw.replace("\n", " ").replace("\xa0", " ").strip().upper()
 
-                # Проверяем
                 if "USD" in clean:
                     buy = cells[1].get_text(strip=True)
                     sell = cells[2].get_text(strip=True)
