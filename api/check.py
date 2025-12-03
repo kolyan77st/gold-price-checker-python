@@ -68,14 +68,20 @@ def get_usd_rate_kurs():
 
         soup = BeautifulSoup(r.text, "html.parser")
 
-        # Ищем строку, где встречается текст "USD"
         rows = soup.find_all("tr")
 
         for row in rows:
             cells = row.find_all("td")
             if len(cells) >= 3:
-                text = cells[0].get_text(strip=True)
-                if "USD" in text.upper():
+
+                # Берём текст первого столбца (где картинка + "USD")
+                raw = cells[0].get_text(separator=" ", strip=True)
+
+                # Нормализуем
+                clean = raw.replace("\n", " ").replace("\xa0", " ").strip().upper()
+
+                # Проверяем
+                if "USD" in clean:
                     buy = cells[1].get_text(strip=True)
                     sell = cells[2].get_text(strip=True)
                     return buy, sell
@@ -85,6 +91,7 @@ def get_usd_rate_kurs():
     except Exception as e:
         print("Ошибка получения USD с Kurs.kz:", e)
         return None, None
+
 
 
 
