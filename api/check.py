@@ -63,10 +63,6 @@ def get_prices():
 # ==================================================================
 @app.route("/api/check")
 def check_gold():
-    token = request.args.get("token", "")
-    if token != SECRET_TOKEN:
-        return Response("Unauthorized", status=403)
-
     try:
         prices = get_prices()
 
